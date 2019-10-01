@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Static Template</title>
+  </head>
+  <body>
+    <h1>TV shows</h1>
+    <div>
+      <form>
+        <fieldset>
+          <legend><b>Choose order:</b></legend>
+          Popular TV shows: <input type="radio" name="shows" onclick="handleClick(this);" value="popular" checked>&nbsp;
+          Top Rated TV shows: <input type="radio" name="shows" onclick="handleClick(this);" value="top_rated"><br>
+        </fieldset>
+      </form>
+    </div>  
+    <div id="list" style="margin:15px 5px;"></div>
+    <div id="pagination" style="margin:15px 5px;"></div>
+    <div id="subList"></div>
+    <div id="seasonList"></div>
+    <div id="episodeList"></div>
+      <script>
+      const Popular = 'popular';
+      const TopRated = 'top_rated';
+      const TV = 'tv';
+
+      var list = document.getElementById('list');
+      var paginationDiv = document.getElementById('pagination');
+      var currentType = Popular;
+      var currentPage = build();
+
+      function build(page = 1) {
+        list.innerHTML = '';
+        getData('https://api.themoviedb.org/3/tv/' + currentType + '?page=' + page + '&language=en-US&api_key=867b08a0fa064f71e7dbdf17a12b2c0d',
+        function(err, data) {
+          if (err !== null) {
+            console.log('Something went wrong: ' + err);
+          } else {
+            numberPages = data.total_pages;
+            list.innerHTML = "<ul>";
+
+            for (let i = 0; i < data.results.length; i++) {
+              list.innerHTML += '<li onclick="handleClickOnList(' + data.results[i].id + ')">' + data.results[i].original_name + '</li>';
+            }
+
+            list.innerHTML += "</ul>";
+            var pagination = "Page " + currentPage + " out of " + numberPages + "<br><a href='javascript:prevPage()' id='btn_prev'>Prev</a>&nbsp;<a href='javascript:nextPage(numberPages)' id='btn_next'>Next</a>";
+            paginationDiv.innerHTML = pagination;
+          }
+        });
+
+        return page;
+      }
+
+      function getDetails(tvId = 1) {
+        getData('https://api.themoviedb.org/3/tv/' + tvId + '?api_key=867b08a0fa064f71e7dbdf17a12b2c0d&language=en-US',
+        function(err, data) {
+          if (err !== null) {
+            console.log('Something went wrong: ' + err);
+          } else {
+            elem = document.getElementById('subList');
+            if(elem.innerHTML.trim().length == 0) {
+              let ul = document.createElement("ul");
+              elem.appendChild(ul);
+              let appendTo = "<li><b>Name: </b>" + data.name + "<br><b>Overview: </b>" + data.overview + "<br><b>Poster: </b>" + data.poster_path + "<br><b>Number of seasons: </b>" + data.number_of_seasons + "<br><b>Number of episodes: </b>" + data.number_of_episodes + "<br> <b>Seasons:</b> <br><ul>";
+
+              for (let i = 0; i < data.number_of_seasons; i++) {
+                appendTo += '<li onclick="handleClickOnSeason(' + tvId + ", " + data.seasons[i].season_number + ')">' + data.seasons[i].name + '</li>';
+              }
+
+              appendTo += "</ul></li><hr width=100% />";
+              elem.lastChild.innerHTML = appendTo;
+            }
+          }
+        });
+      }
+
+      function getSeason(tvId = 1, seasonId = 1) {
+        getData('https://api.themoviedb.org/3/tv/' + tvId + '/season/' + seasonId + '?api_key=867b08a0fa064f71e7dbdf17a12b2c0d&language=en-US',
+        function(err, data) {
+          if (err !== null) {
+            console.log('Something went wrong: ' + err);
+          } else {
+            elem = document.getElementById('seasonList');
+            if(elem.innerHTML.trim().length == 0) {
+              let ul = document.createElement("ul");
+              elem.appendChild(ul);
+              let appendTo = "<li><b>Name: </b>" + data.name + "<br><b>Overview: </b>" + data.overview + "<br><b>Poster: </b>" + data.poster_path + "<br><b>Season number: </b>" + data.season_number + "<br><b>Number of episodes: </b>" + data.episodes.length + "<br> <b>Episodes:</b> <br><ul>";
+              
+              for (let i = 0; i < data.episodes.length; i++) {
+                let arrData = [data.episodes[i].name, data.episodes[i].overview, data.episodes[i].still_path, data.episodes[i].episode_number, data.episodes[i].season_number];
+                let jsonData = JSON.stringify(arrData);
+                appendTo += "<li onclick='handleClickOnEpisode(" + jsonData + ")'>" + data.episodes[i].name + "</li>";              
+              }
+
+              appendTo += "</ul></li><hr width=100% />";
+              elem.lastChild.innerHTML = appendTo;
+            }
+          }
+        });
+      }
+
+      function getEpisode(data) {
+        elem = document.getElementById('episodeList');
+        if(elem.innerHTML.trim().length == 0) {
+          let ul = document.createElement("ul");
+          elem.appendChild(ul);
+          let appendTo = "<li><b>Name: </b>" + data[0] + "<br><b>Overview: </b>" + data[1] + "<br><b>Poster: </b>" + data[2] + "<br><b>Season number: </b>" + data[3] + "<br><b>Episod number: </b>" + data[4] + "<br><ul>";  
+          appendTo += "</ul></li><hr width=100% />";    
+          elem.lastChild.innerHTML = appendTo;
+        }
+      }
+
+      function handleClickOnList(id = 1) {
+        document.getElementById('subList').innerHTML = "";
+        document.getElementById('seasonList').innerHTML = "";
+        document.getElementById('episodeList').innerHTML = "";
+
+        getDetails(id);
+      }
+
+      function handleClickOnSeason(tvId = 1, seasonNumber = 1) {
+        document.getElementById('seasonList').innerHTML = "";
+        document.getElementById('episodeList').innerHTML = "";
+        getSeason(tvId, seasonNumber);
+      }
+
+      function handleClickOnEpisode(jsonData) {
+        document.getElementById('episodeList').innerHTML = "";
+        getEpisode(jsonData);
+      }
+
+      function handleClick(tvType) {
+        if (currentType != tvType.value) {
+          currentPage = 1;
+          currentType = tvType.value;
+          return build();
+        }
+      }
+
+      function nextPage(numberPages) {
+        if ((currentPage + 1) <= numberPages) {
+          currentPage += 1;
+          build(currentPage);
+        }
+      }
+
+      function prevPage() {
+        if (currentPage - 1) {
+          currentPage -= 1;
+          build(currentPage);
+        }
+      }
+
+      function getData(url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'json';
+        xhr.onload = function() {
+          var status = xhr.status;
+          if (status === 200) {
+            callback(null, xhr.response);
+          } else {
+            callback(status, xhr.response);
+          }
+        };
+        xhr.send();
+      };
+      </script>
+  </body>
+</html>
